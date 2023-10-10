@@ -26,12 +26,12 @@ import sim_runner
 class SimReplay(sim_runner.SimRunner):
     REPLAY_MSGS = ['VISION_POSITION_DELTA', 'GPS_INPUT']
 
-    def __init__(self, replay_path: str, params_path: str, log_path: str, speedup: float):
+    def __init__(self, replay_path: str, params_path: str | None, log_path: str | None, speedup: float):
         super().__init__(params_path, log_path, speedup)
         self.replay_tlog = mavutil.mavlink_connection(replay_path)
 
     def run(self) -> None:
-        print('SIM REPLAY: simulation started')
+        self.print('replay started')
         now_msg1 = None
         timestamp_msg1 = None
         msg_types = []
@@ -47,7 +47,7 @@ class SimReplay(sim_runner.SimRunner):
                 # Track the current time and the timestamp for msg1
                 now_msg1 = now
                 timestamp_msg1 = timestamp_msg
-                print(f'SIM REPLAY: delta is {now_msg1 - timestamp_msg1 :.2f} seconds')
+                self.print(f'delta is {now_msg1 - timestamp_msg1 :.2f} seconds')
             else:
                 # Calc how long we'll need to wait to send this message
                 d_wait = (timestamp_msg - timestamp_msg1) / self.speedup - (now - now_msg1)
@@ -59,15 +59,15 @@ class SimReplay(sim_runner.SimRunner):
 
             msg_type = msg.get_type()
             if msg_type not in msg_types:
-                print(f'SIM REPLAY: replay first {msg_type} message')
+                self.print(f'replay first {msg_type} message')
                 msg_types.append(msg_type)
 
             if msg_count % 1000 == 0:
                 elapsed_s = timestamp_msg - timestamp_msg1
                 elapsed_m = elapsed_s / 60.0
-                print(f'SIM REPLAY: sent {msg_count} messages, elapsed sim time {elapsed_s :.2f}s ({elapsed_m :.2f}m)')
+                self.print(f'sent {msg_count} messages, elapsed sim time {elapsed_s :.2f}s ({elapsed_m :.2f}m)')
 
-        print('SIM REPLAY: simulation stopped')
+        self.print('simulation stopped')
 
 
 def main():

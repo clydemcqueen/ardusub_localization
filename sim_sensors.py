@@ -78,14 +78,13 @@ def default_gps_input_msg() -> apm2.MAVLink_gps_input_message:
                                           satellites_visible, yaw)
 
 
-# TODO handle --speedup
 class SimSensors(sim_runner.SimRunner):
     FAST_LOOP_PERIOD = 0.2
     SLOW_LOOP_COUNT = 5
 
-    def __init__(self, params_path: str, log_path: str, duration: int, switch: bool, ):
-        print(f'SIM SENSORS: run for {duration}s')
-        super().__init__(params_path, log_path, 1.0)
+    def __init__(self, params_path: str | None, log_path: str | None, speedup: float, duration: int, switch: bool):
+        super().__init__(params_path, log_path, speedup)
+        self.print(f'run for {duration}s')
         self.duration = duration
         self.switch = switch
         self.heartbeat_msg = default_heartbeat_msg()
@@ -93,15 +92,28 @@ class SimSensors(sim_runner.SimRunner):
         self.gps_input_msg = default_gps_input_msg()
         self.position = position.Position()
         self.dvl_is_active = False
+        self.armed = False
 
     def set_ekf_src(self, n: int):
         """
         Select an EKF source set. Is this supported on the Sub-4.1 branch?
         """
-        print(f'SIM SENSORS: switching EKF to SRC{n}')
+        self.print(f'switching EKF to SRC{n}')
         self.send_to_ardusub(apm2.MAVLink_command_long_message(
-            1, 1, apm2.MAV_CMD_SET_EKF_SOURCE_SET, 0,
-            n, 0, 0, 0, 0, 0, 0))
+            self.ardusub.target_system, self.ardusub.target_component, apm2.MAV_CMD_SET_EKF_SOURCE_SET,
+            0, n, 0, 0, 0, 0, 0, 0))
+
+    def set_rc_channels(self, forward: int, yaw: int):
+        rc_values = [65535 for _ in range(18)]  # 65535 means 'ignore this channel'
+        rc_values[3] = yaw
+        rc_values[4] = forward
+        self.send_to_ardusub(apm2.MAVLink_rc_channels_override_message(
+            self.ardusub.target_system, self.ardusub.target_component, *rc_values))
+
+    def arm(self):
+        self.send_to_ardusub(apm2.MAVLink_command_long_message(
+            self.ardusub.target_system, self.ardusub.target_component, apm2.MAV_CMD_COMPONENT_ARM_DISARM,
+            0, 1, 0, 0, 0, 0, 0, 0))
 
     def slow_loop(self):
         self.send_to_ardusub(self.heartbeat_msg)
@@ -111,16 +123,27 @@ class SimSensors(sim_runner.SimRunner):
     def fast_loop(self):
         self.recv_messages_from_ardusub()
 
+        if self.ardusub_ready and not self.armed:
+            # TODO depending on speedup this might fail... wait for something else?
+            self.print(f'arming')
+            self.arm()
+            self.armed = True
+
+        # Move forward at a constant velocity, turning right just a bit
+        # TODO too sensitive... add more drag, or decrease the deadzones
+        # if self.armed:
+        #     self.set_rc_channels(1510, 1505)
+
         self.position.update(SimSensors.FAST_LOOP_PERIOD)
 
         dvl_should_be_active = self.position.theta > math.pi
         if self.dvl_is_active != dvl_should_be_active:
             if dvl_should_be_active:
-                print('SIM SENSORS: DVL on')
+                self.print('DVL on')
                 if self.switch:
                     self.set_ekf_src(param.MULTI_SRC_DVL_ON)
             else:
-                print('SIM SENSORS: DVL off')
+                self.print('DVL off')
                 if self.switch:
                     self.set_ekf_src(param.MULTI_SRC_DVL_OFF)
             self.dvl_is_active = dvl_should_be_active
@@ -131,28 +154,28 @@ class SimSensors(sim_runner.SimRunner):
             self.send_to_ardusub(self.vision_position_delta_msg)
 
     def run(self) -> None:
-        print(f'SIM SENSORS: simulation started')
+        self.print(f'sensors started')
         count = 0
-        start = time.time()
 
-        while time.time() - start < self.duration:
-            time.sleep(SimSensors.FAST_LOOP_PERIOD)
+        while self.sim_time() < self.duration:
+            time.sleep(SimSensors.FAST_LOOP_PERIOD / self.speedup)
             if count % SimSensors.SLOW_LOOP_COUNT == 0:
                 self.slow_loop()
             self.fast_loop()
             count += 1
 
-        print(f'SIM SENSORS: simulation stopped')
+        self.print(f'simulation stopped')
 
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
     parser.add_argument('--params', type=str, default=None, help='path of parameter file')
     parser.add_argument('--log', type=str, default=None, help='enable logging')
+    parser.add_argument('--speedup', type=float, default=1.0, help='SIM_SPEEDUP value')
     parser.add_argument('--time', type=int, default=60, help='how long to run the simulation')
     parser.add_argument('--switch', action='store_true', help='switch EKF sources when DVL goes on/off')
     args = parser.parse_args()
-    runner = SimSensors(args.params, args.log, args.time, args.switch)
+    runner = SimSensors(args.params, args.log, args.speedup, args.time, args.switch)
     runner.run()
 
 
