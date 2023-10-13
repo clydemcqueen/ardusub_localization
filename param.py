@@ -28,33 +28,33 @@ RANGEFINDER_TYPE_MAVLINK = 10
 
 # Copied from the C++ code for reference
 class SourceXY(IntEnum):
-    NONE = 0,
+    NONE = 0
     # BARO = 1 (not applicable)
     # RANGEFINDER = 2 (not applicable)
-    GPS = 3,
-    BEACON = 4,
-    OPTFLOW = 5,
-    EXTNAV = 6,
+    GPS = 3
+    BEACON = 4
+    OPTFLOW = 5
+    EXTNAV = 6
     WHEEL_ENCODER = 7
 
 
 class SourceZ(IntEnum):
-    NONE = 0,
-    BARO = 1,
-    RANGEFINDER = 2,
-    GPS = 3,
-    BEACON = 4,
+    NONE = 0
+    BARO = 1
+    RANGEFINDER = 2
+    GPS = 3
+    BEACON = 4
     # OPTFLOW = 5 (not applicable, optical flow can be used for terrain alt but not relative or absolute alt)
     EXTNAV = 6
     # WHEEL_ENCODER = 7 (not applicable)
 
 
 class SourceYaw(IntEnum):
-    NONE = 0,
-    COMPASS = 1,
-    GPS = 2,
-    GPS_COMPASS_FALLBACK = 3,
-    EXTNAV = 6,
+    NONE = 0
+    COMPASS = 1
+    GPS = 2
+    GPS_COMPASS_FALLBACK = 3
+    EXTNAV = 6
     GSF = 8
 
 

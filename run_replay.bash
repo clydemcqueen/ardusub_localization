@@ -16,6 +16,6 @@ echo "############################"
 echo ">>> PROCESSING LOG FILES <<<"
 echo "############################"
 
-export TLOG_MERGE_MSGS=GLOBAL_POSITION_INT,GPS_INPUT,GPS_RAW_INT,LOCAL_POSITION_NED,VISION_POSITION_DELTA
-tlog_map_maker.py /tmp/$2.tlog
+show_types.py /tmp/$2.tlog
+export TLOG_MERGE_MSGS=GLOBAL_POSITION_INT,GPS_INPUT,GPS_RAW_INT,LOCAL_POSITION_NED,VISION_POSITION_DELTA,SIMSTATE
 tlog_merge.py --types TLOG_MERGE_MSGS --rate /tmp/$2.tlog
