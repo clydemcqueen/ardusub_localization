@@ -78,8 +78,8 @@ class SimRunner:
     def __init__(self, params_path: str or None, log_path: str or None, speedup: float):
         # Start the clock
         self.start = time.time()
-        self.speedup = speedup
 
+        self.speedup = speedup
         self.print(f'run at {speedup}X wall time')
 
         if log_path:

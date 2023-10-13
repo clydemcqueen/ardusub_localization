@@ -92,7 +92,7 @@ class SimSensors(sim_runner.SimRunner):
         self.gps_input_msg = default_gps_input_msg()
         self.position = position.Position()
         self.dvl_is_active = False
-        self.armed = False
+        # self.armed = False
 
     def set_ekf_src(self, n: int):
         """
@@ -123,14 +123,13 @@ class SimSensors(sim_runner.SimRunner):
     def fast_loop(self):
         self.recv_messages_from_ardusub()
 
-        if self.ardusub_ready and not self.armed:
-            # TODO depending on speedup this might fail... wait for something else?
-            self.print(f'arming')
-            self.arm()
-            self.armed = True
+        # Experiment: use RC overrides to move in a circle to see if the IMU improves the results.
+        # Results so far: the circle is too tight, and the RC inputs are hitting the deadzones.
+        # if self.ardusub_ready and not self.armed:
+            # self.print(f'arming')
+            # self.arm()
+            # self.armed = True
 
-        # Move forward at a constant velocity, turning right just a bit
-        # TODO too sensitive... add more drag, or decrease the deadzones
         # if self.armed:
         #     self.set_rc_channels(1510, 1505)
 
@@ -156,6 +155,9 @@ class SimSensors(sim_runner.SimRunner):
     def run(self) -> None:
         self.print(f'sensors started')
         count = 0
+
+        # Hack: switch to SRC2 to work around DVL extension bug
+        # self.set_ekf_src(2)
 
         while self.sim_time() < self.duration:
             time.sleep(SimSensors.FAST_LOOP_PERIOD / self.speedup)
