@@ -1,4 +1,6 @@
-# Params from the 9/22/2023 dive
+# Params from the 9/22/2023 dive on the ROV "Lutris"
+# These parameters were set by the BlueOS-Water-Linked-DVL extension
+# Reference: https://github.com/bluerobotics/BlueOS-Water-Linked-DVL/issues/35
 1	1	EK3_SRC1_POSXY	6	2	# ExternalNav
 1	1	EK3_SRC1_POSZ	1	2	# Baro
 1	1	EK3_SRC1_VELXY	6	2	# ExternalNav

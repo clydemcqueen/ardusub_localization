@@ -43,6 +43,41 @@ To replay a previous dive with new parameters, also at 20x speed:
 python sim_replay.py --params params/fusion.params --log /tmp/fusion.tlog --speedup 20.0 previous_dive.tlog
 ~~~
 
+## Comparing DVL-only parameters vs fusion parameters
+
+[compare.bash](compare.bash) runs 8 tests, 4 with DVL-only parameters and 4 with fusion parameters.
+Each batch of 4 corresponds to a different sensor mode:
+~~~
+# Sensor modes:
+#     UGPS_AND_INTERMITTENT_DVL = 0 (default) -- the UGPS is always on and the DVL turns on/off
+#     UGPS_ONLY = 1
+#     DVL_ONLY = 2
+#     UGPS_AND_DVL = 3
+
+# DVL-only parameters:
+source run_sensors.bash params/lutris.params mode_0_lutris 20.0 400 0
+source run_sensors.bash params/lutris.params mode_1_lutris 20.0 400 1
+source run_sensors.bash params/lutris.params mode_2_lutris 20.0 400 2
+source run_sensors.bash params/lutris.params mode_3_lutris 20.0 400 3
+
+# Fusion parameters:
+source run_sensors.bash params/fusion.params mode_0_fusion 20.0 400 0
+source run_sensors.bash params/fusion.params mode_1_fusion 20.0 400 1
+source run_sensors.bash params/fusion.params mode_2_fusion 20.0 400 2
+source run_sensors.bash params/fusion.params mode_3_fusion 20.0 400 3
+~~~
+
+Here is a screenshot of all 8 tests in PlotJuggler:
+
+![images/compare.png](images/compare.png)
+
+| Plot        | Mode                         | Results for fusion parameters                   | Results for DVL-only parameters |
+|-------------|------------------------------|-------------------------------------------------|---------------------------------|
+| Upper left  | 0: UGPS on, DVL intermittent | Good (purple)                                   | Unusable (light blue)           |
+| Lower left  | 1: UGPS on                   | Good (light green)                              | No smoothing (blue)             |
+| Upper right | 2: DVL on                    | Good, but shifted (red)                         | Good (green)                    |
+| Lower right | 3: UGPS on, DVL on           | Good, position corrects after GPS lock (orange) | Good, but shifted (pink)        |
+
 ## Caveats
 
 * The simulated IMUs (accel, gyro) are indicating no movement, and therefore not aiding the EKF.
