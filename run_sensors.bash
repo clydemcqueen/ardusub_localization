@@ -18,12 +18,17 @@ echo "##########################"
 echo ">>> RUNNING SIMULATION <<<"
 echo "##########################"
 
-python sim_sensors.py --params $PARAMS --log /tmp/$RUN_NAME.tlog --speedup $SPEEDUP --time $DURATION --mode $MODE
+python sim_sensors.py --params ${PARAMS} --log /tmp/${RUN_NAME}.tlog --speedup ${SPEEDUP} --time ${DURATION} --mode ${MODE}
 
 echo "############################"
 echo ">>> PROCESSING LOG FILES <<<"
 echo "############################"
 
-show_types.py /tmp/$RUN_NAME.tlog
-export TLOG_MERGE_MSGS=GLOBAL_POSITION_INT,GPS_INPUT,GPS_RAW_INT,LOCAL_POSITION_NED,VISION_POSITION_DELTA,SIMSTATE
-tlog_merge.py --types $TLOG_MERGE_MSGS --rate /tmp/$RUN_NAME.tlog
+# Using pymavlink tools
+mavlogdump.py --types GPS_INPUT --format csv /tmp/${RUN_NAME}.tlog > /tmp/${RUN_NAME}_GPS_INPUT.csv
+mavlogdump.py --types GLOBAL_POSITION_INT --format csv /tmp/${RUN_NAME}.tlog > /tmp/${RUN_NAME}_GLOBAL_POSITION_INT.csv
+
+# Using https://github.com/clydemcqueen/ardusub_log_tools
+# show_types.py /tmp/${RUN_NAME}.tlog
+# export TLOG_MERGE_MSGS=GLOBAL_POSITION_INT,GPS_INPUT,GPS_RAW_INT,LOCAL_POSITION_NED,VISION_POSITION_DELTA,SIMSTATE
+# tlog_merge.py --types ${TLOG_MERGE_MSGS} --rate /tmp/${RUN_NAME}.tlog
