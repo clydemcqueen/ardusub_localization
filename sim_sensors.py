@@ -2,11 +2,18 @@
 
 """
 Demonstrate sensor fusion with two sensors: a MAVLink DVL and a MAVLink UGPS (Underwater GPS).
+
+Sensor modes:
+    UGPS_AND_INTERMITTENT_DVL = 0 (default) -- the UGPS is always on and the DVL turns on/off
+    UGPS_ONLY = 1
+    DVL_ONLY = 2
+    UGPS_AND_DVL = 3
 """
 
 import argparse
 import math
 import time
+from enum import IntEnum
 
 from pymavlink.dialects.v20 import ardupilotmega as apm2
 
@@ -78,20 +85,34 @@ def default_gps_input_msg() -> apm2.MAVLink_gps_input_message:
                                           satellites_visible, yaw)
 
 
+class SensorMode(IntEnum):
+    UGPS_AND_INTERMITTENT_DVL = 0
+    UGPS_ONLY = 1
+    DVL_ONLY = 2
+    UGPS_AND_DVL = 3
+
+
 class SimSensors(sim_runner.SimRunner):
     FAST_LOOP_PERIOD = 0.2
     SLOW_LOOP_COUNT = 5
 
-    def __init__(self, params_path: str | None, log_path: str | None, speedup: float, duration: int, switch: bool):
+    def __init__(self,
+                 params_path: str | None,
+                 log_path: str | None,
+                 speedup: float,
+                 duration: int,
+                 switch: bool,
+                 mode: SensorMode):
         super().__init__(params_path, log_path, speedup)
         self.print(f'run for {duration}s')
         self.duration = duration
         self.switch = switch
+        self.mode = mode
+        self.dvl_is_active = True if mode in [SensorMode.DVL_ONLY, SensorMode.UGPS_AND_DVL] else False
         self.heartbeat_msg = default_heartbeat_msg()
         self.vision_position_delta_msg = default_vision_position_delta_msg()
         self.gps_input_msg = default_gps_input_msg()
         self.position = position.Position()
-        self.dvl_is_active = False
         # self.armed = False
 
     def set_ekf_src(self, n: int):
@@ -117,8 +138,9 @@ class SimSensors(sim_runner.SimRunner):
 
     def slow_loop(self):
         self.send_to_ardusub(self.heartbeat_msg)
-        self.gps_input_msg.lat, self.gps_input_msg.lon = self.position.noisy_gps()
-        self.send_to_ardusub(self.gps_input_msg)
+        if self.mode in [SensorMode.UGPS_ONLY, SensorMode.UGPS_AND_DVL, SensorMode.UGPS_AND_INTERMITTENT_DVL]:
+            self.gps_input_msg.lat, self.gps_input_msg.lon = self.position.noisy_gps()
+            self.send_to_ardusub(self.gps_input_msg)
 
     def fast_loop(self):
         self.recv_messages_from_ardusub()
@@ -135,17 +157,18 @@ class SimSensors(sim_runner.SimRunner):
 
         self.position.update(SimSensors.FAST_LOOP_PERIOD)
 
-        dvl_should_be_active = self.position.theta > math.pi
-        if self.dvl_is_active != dvl_should_be_active:
-            if dvl_should_be_active:
-                self.print('DVL on')
-                if self.switch:
-                    self.set_ekf_src(param.MULTI_SRC_DVL_ON)
-            else:
-                self.print('DVL off')
-                if self.switch:
-                    self.set_ekf_src(param.MULTI_SRC_DVL_OFF)
-            self.dvl_is_active = dvl_should_be_active
+        if self.mode == SensorMode.UGPS_AND_INTERMITTENT_DVL:
+            dvl_should_be_active = self.position.theta > math.pi
+            if self.dvl_is_active != dvl_should_be_active:
+                if dvl_should_be_active:
+                    self.print('DVL on')
+                    if self.switch:
+                        self.set_ekf_src(param.MULTI_SRC_DVL_ON)
+                else:
+                    self.print('DVL off')
+                    if self.switch:
+                        self.set_ekf_src(param.MULTI_SRC_DVL_OFF)
+                self.dvl_is_active = dvl_should_be_active
 
         if self.dvl_is_active:
             self.vision_position_delta_msg.angle_delta = self.position.angle_delta
@@ -176,8 +199,9 @@ def main():
     parser.add_argument('--speedup', type=float, default=1.0, help='SIM_SPEEDUP value')
     parser.add_argument('--time', type=int, default=60, help='how long to run the simulation')
     parser.add_argument('--switch', action='store_true', help='switch EKF sources when DVL goes on/off')
+    parser.add_argument('--mode', type=int, default=0, help='sensor mode (see above)')
     args = parser.parse_args()
-    runner = SimSensors(args.params, args.log, args.speedup, args.time, args.switch)
+    runner = SimSensors(args.params, args.log, args.speedup, args.time, args.switch, args.mode)
     runner.run()
 
 
