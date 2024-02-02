@@ -100,10 +100,11 @@ class SimSensors(sim_runner.SimRunner):
                  params_path: str | None,
                  log_path: str | None,
                  speedup: float,
+                 mavproxy: bool,
                  duration: int,
                  switch: bool,
                  mode: SensorMode):
-        super().__init__(params_path, log_path, speedup)
+        super().__init__(params_path, log_path, speedup, mavproxy)
         self.print(f'run for {duration}s')
         self.duration = duration
         self.switch = switch
@@ -194,14 +195,12 @@ class SimSensors(sim_runner.SimRunner):
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-    parser.add_argument('--params', type=str, default=None, help='path of parameter file')
-    parser.add_argument('--log', type=str, default=None, help='enable logging')
-    parser.add_argument('--speedup', type=float, default=1.0, help='SIM_SPEEDUP value')
+    sim_runner.add_sim_runner_args(parser)
     parser.add_argument('--time', type=int, default=60, help='how long to run the simulation')
     parser.add_argument('--switch', action='store_true', help='switch EKF sources when DVL goes on/off')
     parser.add_argument('--mode', type=int, default=0, help='sensor mode (see above)')
     args = parser.parse_args()
-    runner = SimSensors(args.params, args.log, args.speedup, args.time, args.switch, args.mode)
+    runner = SimSensors(args.params, args.log, args.speedup, args.mavproxy, args.time, args.switch, args.mode)
     runner.run()
 
 

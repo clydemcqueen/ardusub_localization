@@ -1,7 +1,7 @@
 """
 Run an ArduSub simulation.
 """
-
+import argparse
 import os
 import subprocess
 import time
@@ -58,8 +58,9 @@ class SimRunner:
     """
     Manage a simulation. Subclasses should call receive_all_messages() periodically.
 
-    Limitation: this class connects directly to ArduSub and does not route MAVLink messages.
-    I.e., you cannot use this class with another ground control station like QGroundControl.
+    Supports 2 modes:
+        1. Start ArduSub, and connect directly. When this script stops ArduSub stops.
+        2. Connect to a running system. Can be used with sim_vehicle.py, QGroundControl, etc.
     """
 
     REQUEST_MSG_IDS = [
@@ -75,7 +76,7 @@ class SimRunner:
 
     SPAMMY_PARAMS = ['BARO1_GND_PRESS', 'BARO2_GND_PRESS', 'STAT_RUNTIME', 'STAT_FLTTIME']
 
-    def __init__(self, params_path: str or None, log_path: str or None, speedup: float):
+    def __init__(self, params_path: str or None, log_path: str or None, speedup: float, mavproxy: bool):
         # Start the clock
         self.start = time.time()
 
@@ -89,11 +90,17 @@ class SimRunner:
             self.print('not logging')
             self.log_writer = None
 
-        self.ardusub_pid = start_ardusub(speedup)
+        self.ardusub_pid = None if mavproxy else start_ardusub(speedup)
 
         self.print('connecting to ArduSub...')
-        self.ardusub = mavutil.mavlink_connection(
-            'tcp:127.0.0.1:5760', source_system=255, source_component=0, autoreconnect=True)
+        if mavproxy:
+            # Be sure to add a 2nd output to the sim_vehicle.py call: "--out 127.0.0.1:14551"
+            self.ardusub = mavutil.mavlink_connection(
+                'udpin:0.0.0.0:14551', source_system=254, source_component=0, autoreconnect=True)
+        else:
+            self.print('connecting to ArduSub...')
+            self.ardusub = mavutil.mavlink_connection(
+                'tcp:127.0.0.1:5760', source_system=255, source_component=0, autoreconnect=True)
 
         self.print('connected, waiting for a HEARTBEAT message...')
         self.ardusub.wait_heartbeat()
@@ -185,3 +192,14 @@ class SimRunner:
 
             if self.log_writer and (self.ardusub_origin or msg.get_type() not in SimRunner.GPS_MSGS):
                 self.log_writer.write(msg)
+
+
+def add_sim_runner_args(parser: argparse.ArgumentParser):
+    parser.add_argument('--params', type=str, default=None, help='path of parameter file')
+    parser.add_argument('--log', type=str, default=None, help='enable logging')
+    parser.add_argument('--speedup', type=float, default=1.0, help='SIM_SPEEDUP value')
+    parser.add_argument('--mavproxy', action='store_true', help='connect to a running system')
+
+
+# TODO example in the README.md
+# Tools/autotest/sim_vehicle.py -l 47.607594,-122.343869,-0.1,0 -v ArduSub -f vectored_6dof --speedup=1 --out "127.0.0.1:14551"

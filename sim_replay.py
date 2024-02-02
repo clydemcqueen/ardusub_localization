@@ -26,8 +26,8 @@ import sim_runner
 class SimReplay(sim_runner.SimRunner):
     REPLAY_MSGS = ['VISION_POSITION_DELTA', 'GPS_INPUT']
 
-    def __init__(self, replay_path: str, params_path: str | None, log_path: str | None, speedup: float):
-        super().__init__(params_path, log_path, speedup)
+    def __init__(self, replay_path: str, params_path: str | None, log_path: str | None, speedup: float, mavproxy: bool):
+        super().__init__(params_path, log_path, speedup, mavproxy)
         self.replay_tlog = mavutil.mavlink_connection(replay_path)
 
     def run(self) -> None:
@@ -72,12 +72,10 @@ class SimReplay(sim_runner.SimRunner):
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-    parser.add_argument('--params', type=str, default=None, help='path of parameter file')
-    parser.add_argument('--log', type=str, default=None, help='write a new log')
-    parser.add_argument('--speedup', type=float, default=1.0, help='SIM_SPEEDUP value')
+    sim_runner.add_sim_runner_args(parser)
     parser.add_argument('path')
     args = parser.parse_args()
-    runner = SimReplay(args.path, args.params, args.log, args.speedup)
+    runner = SimReplay(args.path, args.params, args.log, args.speedup, args.mavproxy)
     runner.run()
 
 
